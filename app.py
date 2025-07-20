@@ -128,11 +128,9 @@ async def upscale_image(file: UploadFile = File(...), outscale: int = Form(4)):
     if not success:
         logger.error("Failed to encode output image.")
         raise HTTPException(status_code=500, detail="Failed to encode output")
-        return Response(
-            content=encoded.tobytes(),
-            media_type=file.content_type
-        )
-
+    
+    return StreamingResponse(BytesIO(encoded.tobytes()), media_type=file.content_type,
+                             headers={"Content-Disposition": f"attachment; filename=upscaled_{file.filename}"})
 
 @app.get("/")
 async def root():
