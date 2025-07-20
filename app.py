@@ -24,14 +24,20 @@ MODEL_DIR = Path(__file__).parent / 'models'
 MODEL_DIR.mkdir(exist_ok=True)
 MODEL_FILE = MODEL_DIR / 'realesr-general-x4v3.pth'
 MODEL_URL = 'https://huggingface.co/jhj0517/realesr-general-x4v3/resolve/main/realesr-general-x4v3.pth'
+MIN_MODEL_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Ensure model is present
+# Ensure model is present and valid
 def ensure_model():
     if MODEL_FILE.exists():
         size = MODEL_FILE.stat().st_size
-        logger.info(f"Model already exists at {MODEL_FILE}, size={size} bytes")
-        return
-    logger.info(f"Model not found, downloading from: {MODEL_URL}")
+        if size >= MIN_MODEL_SIZE:
+            logger.info(f"Model already exists at {MODEL_FILE}, size={size} bytes")
+            return
+        else:
+            logger.warning(f"Existing model at {MODEL_FILE} is too small ({size} bytes), re-downloading.")
+            MODEL_FILE.unlink()
+
+    logger.info(f"Downloading model from: {MODEL_URL}")
     try:
         rsp = requests.get(MODEL_URL, stream=True, timeout=60)
         rsp.raise_for_status()
@@ -44,11 +50,13 @@ def ensure_model():
                 f.write(chunk)
                 downloaded += len(chunk)
                 if total:
-                    logger.info(f"Download progress: {downloaded/total:.1%}")
-        logger.info(f"Downloaded model to {MODEL_FILE}, total bytes={MODEL_FILE.stat().st_size}")
+                    percent = downloaded / total * 100
+                    logger.info(f"Download progress: {percent:.2f}%")
+        final_size = MODEL_FILE.stat().st_size
+        logger.info(f"Downloaded model to {MODEL_FILE}, size={final_size} bytes")
     except Exception as e:
         logger.error(f"Failed to download the model: {e}")
-        raise
+        raise RuntimeError("Could not download RealESRGAN model")
 
 # Monkey-patch torch.load to load full checkpoint on PyTorch>=2.6
 _torch_load = torch.load
@@ -111,9 +119,14 @@ async def upscale_image(file: UploadFile = File(...), outscale: int = Form(4)):
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image file")
-    output, _ = upsampler.enhance(img, outscale=outscale)
+    try:
+        output, _ = upsampler.enhance(img, outscale=outscale)
+    except Exception as e:
+        logger.error(f"Enhance failed: {e}")
+        raise HTTPException(status_code=500, detail="Upscaling failed")
     success, encoded = cv2.imencode('.png' if file.content_type=='image/png' else '.jpg', output)
     if not success:
+        logger.error("Failed to encode output image.")
         raise HTTPException(status_code=500, detail="Failed to encode output")
     return StreamingResponse(BytesIO(encoded.tobytes()), media_type=file.content_type,
                              headers={"Content-Disposition": f"attachment; filename=upscaled_{file.filename}"})
