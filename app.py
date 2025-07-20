@@ -9,6 +9,10 @@ import requests
 from pathlib import Path
 import logging
 
+import torch
+torch.load = lambda f, **kw: __import__('torch').load(f, weights_only=False, **kw)
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
