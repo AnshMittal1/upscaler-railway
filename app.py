@@ -3,14 +3,31 @@ from fastapi.responses import StreamingResponse
 import numpy as np
 import cv2
 from io import BytesIO
+
+import torch
+
+# 1. Keep the original loader around
+_torch_load = torch.load
+
+# 2. Define a proper wrapper
+def _load_with_full_unpickle(f, *args, **kwargs):
+    # Remove any existing 'weights_only' to avoid duplicates
+    kwargs.pop("weights_only", None)
+    # Force weights_only=False
+    return _torch_load(f, *args, weights_only=False, **kwargs)
+
+# 3. Monkey‑patch torch.load
+torch.load = _load_with_full_unpickle
+
+
+
+
 from realesrgan import RealESRGANer
 import os
 import requests
 from pathlib import Path
 import logging
 
-import torch
-torch.load = lambda f, **kw: __import__('torch').load(f, weights_only=False, **kw)
 
 
 # Configure logging
