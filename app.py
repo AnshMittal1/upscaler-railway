@@ -9,6 +9,10 @@ import requests
 from pathlib import Path
 from basicsr.archs.srvgg_arch import SRVGGNetCompact
 
+FILE = "models/realesr-general-x4v3.pth"
+print("MODEL EXISTS?", os.path.isfile(FILE), "SIZE:", os.path.getsize(FILE) if os.path.isfile(FILE) else "N/A")
+
+
 app = FastAPI()
 
 # Create models directory if it doesn't exist
