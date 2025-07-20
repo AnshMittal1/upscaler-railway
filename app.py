@@ -4,10 +4,11 @@ from pathlib import Path
 import requests
 import torch
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse  # changed
 import numpy as np
 import cv2
 from io import BytesIO
+import base64  # added
 from realesrgan import RealESRGANer
 from basicsr.archs.srvgg_arch import SRVGGNetCompact
 
@@ -128,8 +129,16 @@ async def upscale_image(file: UploadFile = File(...), outscale: int = Form(4)):
     if not success:
         logger.error("Failed to encode output image.")
         raise HTTPException(status_code=500, detail="Failed to encode output")
-    return StreamingResponse(BytesIO(encoded.tobytes()), media_type=file.content_type,
-                             headers={"Content-Disposition": f"attachment; filename=upscaled_{file.filename}"})
+
+    # Return base64-encoded image in JSON
+    img_bytes = encoded.tobytes()
+    b64_img = base64.b64encode(img_bytes).decode('utf-8')
+    filename = f"upscaled_{file.filename}"
+    logger.info(f"Upscaling complete, returning JSON with base64 image.")
+    return JSONResponse(content={
+        "filename": filename,
+        "image_base64": b64_img
+    })
 
 @app.get("/")
 async def root():
