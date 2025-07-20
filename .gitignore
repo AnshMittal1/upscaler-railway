@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+.env/
+.env.bak/
+*.env
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# PyInstaller
+*.spec
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Cache
+.cache/
+*.bak
+
+# Docker files
+*.pid
+*.tar
+*.img
+*.sqlite3
+
+# Ignore models/output if generated
+output/
+runs/
