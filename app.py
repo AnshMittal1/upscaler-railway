@@ -10,6 +10,7 @@ import cv2
 from io import BytesIO
 from realesrgan import RealESRGANer
 from basicsr.archs.srvgg_arch import SRVGGNetCompact
+import time
 
 # Configure logger
 t_logging = {
@@ -65,6 +66,7 @@ def _load_full(f, *args, **kwargs):
     kwargs.pop('weights_only', None)
     return _torch_load(f, *args, weights_only=False, **kwargs)
 
+
 torch.load = _load_full
 
 # Download model if needed
@@ -108,6 +110,7 @@ async def health_check():
 
 @app.post("/upscale")
 async def upscale_image(file: UploadFile = File(...), outscale: int = Form(4)):
+    start=time.perf_counter()
     if not upsampler:
         raise HTTPException(status_code=500, detail="Model not initialized properly")
     if not file.content_type.startswith('image/'):
@@ -128,7 +131,8 @@ async def upscale_image(file: UploadFile = File(...), outscale: int = Form(4)):
     if not success:
         logger.error("Failed to encode output image.")
         raise HTTPException(status_code=500, detail="Failed to encode output")
-    
+    end=time.perf_counter()-start
+    logger.info(f"time taken to upscale is : {end} ")
     return StreamingResponse(BytesIO(encoded.tobytes()), media_type=file.content_type,
                              headers={"Content-Disposition": f"attachment; filename=upscaled_{file.filename}"})
 
